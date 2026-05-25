@@ -408,6 +408,28 @@ class TTSTextFrame(AggregatedTextFrame):
 
 
 @dataclass
+class TTSProgressTextFrame(DataFrame):
+    """Progress frame emitted alongside each TTSTextFrame during word-timestamp playback.
+
+    Carries the spoken-so-far / remaining-text breakdown for the active
+    AggregatedTextFrame slot, enabling downstream consumers (e.g. the RTVI
+    observer) to do word-level highlighting without coupling to internal
+    sequencer state.
+
+    Parameters:
+        source_frame_id: ID of the AggregatedTextFrame being spoken.
+        context_id: TTS context this frame belongs to.
+        accumulated_text: Text already spoken in this slot (including the current word).
+        remaining_text: Text not yet spoken in this slot.
+    """
+
+    source_frame_id: int
+    context_id: str | None
+    accumulated_text: str
+    remaining_text: str
+
+
+@dataclass
 class TranscriptionFrame(TextFrame):
     """Text frame containing speech transcription data.
 

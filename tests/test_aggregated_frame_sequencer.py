@@ -22,7 +22,12 @@ Test groups:
 
 import unittest
 
-from pipecat.frames.frames import AggregatedTextFrame, AggregationType, TTSTextFrame
+from pipecat.frames.frames import (
+    AggregatedTextFrame,
+    AggregationType,
+    TTSProgressTextFrame,
+    TTSTextFrame,
+)
 from pipecat.utils.context.aggregated_frame_sequencer import AggregatedFrameSequencer
 from pipecat.utils.context.word_completion_tracker import WordCompletionTracker
 from pipecat.utils.string import TextPartForConcatenation, concatenate_aggregated_text
@@ -194,8 +199,9 @@ class TestProcessWordBasic(unittest.TestCase):
     def test_returns_tts_text_frame(self):
         seq = self._seq_with_spoken("hello")
         result = seq.process_word("hello", pts=100, context_id="ctx1")
-        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result), 2)
         self.assertIsInstance(result[0], TTSTextFrame)
+        self.assertIsInstance(result[1], TTSProgressTextFrame)
 
     def test_frame_text_and_pts(self):
         seq = self._seq_with_spoken("hello")
@@ -222,17 +228,19 @@ class TestProcessWordBasic(unittest.TestCase):
         seq = self._seq_with_spoken("hello world")
         seq.register_skipped(_skipped_frame("code"), "ctx2", None)
         result = seq.process_word("hello", pts=10, context_id="ctx1")
-        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result), 2)
         self.assertIsInstance(result[0], TTSTextFrame)
+        self.assertIsInstance(result[1], TTSProgressTextFrame)
 
     def test_completing_word_flushes_blocked_skipped_frame(self):
         seq = self._seq_with_spoken("hello")
         skipped = _skipped_frame("code")
         seq.register_skipped(skipped, "ctx2", None)
         result = seq.process_word("hello", pts=50, context_id="ctx1")
-        self.assertEqual(len(result), 2)
+        self.assertEqual(len(result), 3)
         self.assertIsInstance(result[0], TTSTextFrame)
-        self.assertIs(result[1], skipped)
+        self.assertIsInstance(result[1], TTSProgressTextFrame)
+        self.assertIs(result[2], skipped)
 
     def test_last_of_multiple_words_flushes_skipped(self):
         seq = self._seq_with_spoken("hello world")
@@ -714,6 +722,59 @@ class TestCJKContextAssembly(unittest.TestCase):
             tts_frames[0].includes_inter_frame_spaces,
             "force_complete must propagate includes_inter_frame_spaces for CJK slots",
         )
+
+
+# ---------------------------------------------------------------------------
+# TTSProgressTextFrame emission
+# ---------------------------------------------------------------------------
+
+
+class TestTTSProgressTextFrame(unittest.TestCase):
+    def _seq_with_spoken(self, text: str, ctx: str = "ctx1") -> AggregatedFrameSequencer:
+        seq = _seq()
+        frame = _spoken_frame(text)
+        seq.register_spoken(frame, ctx, _tracker(text), append_to_context=True)
+        return seq, frame
+
+    def test_progress_frame_emitted_alongside_word_frame(self):
+        seq, source = self._seq_with_spoken("hello")
+        result = seq.process_word("hello", pts=100, context_id="ctx1")
+        progress = [f for f in result if isinstance(f, TTSProgressTextFrame)]
+        self.assertEqual(len(progress), 1)
+        p = progress[0]
+        self.assertEqual(p.accumulated_text, "hello")
+        self.assertEqual(p.remaining_text, "")
+        self.assertEqual(p.context_id, "ctx1")
+        self.assertEqual(p.source_frame_id, source.id)
+        self.assertEqual(p.pts, 100)
+
+    def test_progress_accumulated_and_remaining_mid_slot(self):
+        seq, _ = self._seq_with_spoken("hello world")
+        result = seq.process_word("hello", pts=10, context_id="ctx1")
+        progress = [f for f in result if isinstance(f, TTSProgressTextFrame)]
+        self.assertEqual(len(progress), 1)
+        self.assertEqual(progress[0].accumulated_text, "hello")
+        self.assertEqual(progress[0].remaining_text, "world")
+
+    def test_no_progress_frame_for_passthrough(self):
+        seq = _seq()
+        result = seq.process_word("hello", pts=1, context_id="ctx-unknown")
+        progress = [f for f in result if isinstance(f, TTSProgressTextFrame)]
+        self.assertEqual(progress, [])
+
+    def test_progress_frame_context_id_matches_slot_not_caller(self):
+        seq = _seq()
+        frame1 = _spoken_frame("hello")
+        seq.register_spoken(frame1, "ctx1", _tracker("hello"), append_to_context=True)
+        seq.register_spoken(
+            _spoken_frame("world"), "ctx2", _tracker("world"), append_to_context=True
+        )
+        # Pass a different context_id — progress must still carry the slot's id
+        result = seq.process_word("hello", pts=5, context_id="ctx-wrong")
+        progress = [f for f in result if isinstance(f, TTSProgressTextFrame)]
+        self.assertEqual(len(progress), 1)
+        self.assertEqual(progress[0].context_id, "ctx1")
+        self.assertEqual(progress[0].source_frame_id, frame1.id)
 
 
 if __name__ == "__main__":

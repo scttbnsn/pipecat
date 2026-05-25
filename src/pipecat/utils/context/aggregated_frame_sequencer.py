@@ -14,6 +14,7 @@ from pipecat.frames.frames import (
     AggregatedTextFrame,
     AggregationType,
     Frame,
+    TTSProgressTextFrame,
     TTSTextFrame,
 )
 from pipecat.utils.context.word_completion_tracker import WordCompletionTracker
@@ -202,11 +203,6 @@ class AggregatedFrameSequencer:
         emit_context_id = active.context_id if active else context_id
 
         # logger.debug(f"{self._name} Word '{word}' → frame_text='{frame_text}', raw='{raw_text}'")
-        # TODO: implement
-        # if active.tracker:
-        #     accumulated_tts_text = active.tracker.get_accumulated_tts_text()
-        #     remaining_tts_text = active.tracker.get_remaining_tts_text()
-
         frames: list[Frame] = [
             self._build_word_frame(
                 frame_text,
@@ -216,6 +212,9 @@ class AggregatedFrameSequencer:
                 includes_inter_frame_spaces=slot_ifs,
             )
         ]
+
+        if active and active.tracker:
+            frames.append(self._build_progress_frame(active, pts))
 
         if is_complete and active:
             active.complete = True
@@ -345,6 +344,18 @@ class AggregatedFrameSequencer:
             if found and s.spoken and not s.complete and s.tracker is not None:
                 return s
         return None
+
+    def _build_progress_frame(self, slot: _AggregatedFrameSlot, pts: int) -> TTSProgressTextFrame:
+        """Build a TTSProgressTextFrame reflecting the current spoken/remaining state of a slot."""
+        assert slot.tracker is not None
+        frame = TTSProgressTextFrame(
+            source_frame_id=slot.frame.id,
+            context_id=slot.context_id,
+            accumulated_text=slot.tracker.get_accumulated_tts_text(),
+            remaining_text=slot.tracker.get_remaining_tts_text(),
+        )
+        frame.pts = pts
+        return frame
 
     def _build_word_frame(
         self,
