@@ -39,6 +39,7 @@ from pipecat.frames.frames import (
     MetricsFrame,
     TranscriptionFrame,
     TTSAudioRawFrame,
+    TTSProgressTextFrame,
     TTSStartedFrame,
     TTSStoppedFrame,
     TTSTextFrame,
@@ -362,6 +363,8 @@ class RTVIObserver(BaseObserver):
             await self.send_rtvi_message(RTVI.BotTTSStartedMessage())
         elif isinstance(frame, TTSStoppedFrame) and self._params.bot_tts_enabled:
             await self.send_rtvi_message(RTVI.BotTTSStoppedMessage())
+        elif isinstance(frame, TTSProgressTextFrame):
+            await self._handle_tts_progress(frame)
         elif isinstance(frame, AggregatedTextFrame) and (
             self._params.bot_output_enabled or self._params.bot_tts_enabled
         ):
@@ -512,6 +515,15 @@ class RTVIObserver(BaseObserver):
             # Bot hasn't started speaking yet, queue the frame
             self._queued_aggregated_text_frames.append(frame)
 
+    async def _handle_tts_progress(self, frame: TTSProgressTextFrame):
+        """Handle TTS progress frames."""
+        logger.debug(
+            f"{self} TTS progress: context_id={frame.context_id} "
+            f"source_frame_id={frame.source_frame_id} "
+            f"accumulated={repr(frame.accumulated_text)} "
+            f"remaining={repr(frame.remaining_text)}"
+        )
+
     async def _send_aggregated_llm_text(self, frame: AggregatedTextFrame):
         """Send aggregated LLM text messages."""
         # Skip certain aggregator types if configured to do so.
@@ -527,9 +539,11 @@ class RTVIObserver(BaseObserver):
             if aggregation_type == agg_type or aggregation_type == "*":
                 text = await transform(text, agg_type)
 
+        # TODO: Look here. Think on how to handle this.
+
         isTTS = isinstance(frame, TTSTextFrame)
         if agg_type is not AggregationType.WORD:
-            logger.trace(f"{self} Aggregated LLM text: {text}, {agg_type} spoken:{isTTS}")
+            logger.debug(f"{self} Aggregated LLM text: {text}, {agg_type} spoken:{isTTS}, id: {frame.id}")
 
         if self._params.bot_output_enabled:
             message = RTVI.BotOutputMessage(
