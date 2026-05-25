@@ -417,14 +417,18 @@ class TTSProgressTextFrame(DataFrame):
     sequencer state.
 
     Parameters:
-        source_frame_id: ID of the AggregatedTextFrame being spoken.
+        segment_id: ID of the AggregatedTextFrame being spoken.
         context_id: TTS context this frame belongs to.
+        text: Full original text of the source AggregatedTextFrame.
+        aggregated_by: Aggregation type of the source AggregatedTextFrame.
         accumulated_text: Text already spoken in this slot (including the current word).
         remaining_text: Text not yet spoken in this slot.
     """
 
-    source_frame_id: int
+    segment_id: int
     context_id: str | None
+    text: str
+    aggregated_by: AggregationType | str
     accumulated_text: str
     remaining_text: str
 

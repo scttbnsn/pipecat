@@ -349,8 +349,10 @@ class AggregatedFrameSequencer:
         """Build a TTSProgressTextFrame reflecting the current spoken/remaining state of a slot."""
         assert slot.tracker is not None
         frame = TTSProgressTextFrame(
-            source_frame_id=slot.frame.id,
+            segment_id=slot.frame.id,
             context_id=slot.context_id,
+            text=slot.frame.text,
+            aggregated_by=slot.frame.aggregated_by,
             accumulated_text=slot.tracker.get_accumulated_tts_text(),
             remaining_text=slot.tracker.get_remaining_tts_text(),
         )

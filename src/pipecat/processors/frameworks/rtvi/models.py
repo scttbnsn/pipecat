@@ -349,11 +349,45 @@ class BotOutputMessageData(TextMessageData):
     """Data for bot output RTVI messages.
 
     Extends TextMessageData to include metadata about the output.
+
+    Parameters:
+        spoken: Whether the text has been spoken by TTS.
+        aggregated_by: What form the text is in (e.g., by word, sentence, etc.).
+        segment_id: ID of the source AggregatedTextFrame. Use this to correlate
+            bot-output messages with their corresponding bot-output-progress events.
     """
 
-    spoken: bool = False  # Indicates if the text has been spoken by TTS
+    spoken: bool = False
     aggregated_by: AggregationType | str
-    # Indicates what form the text is in (e.g., by word, sentence, etc.)
+    segment_id: int | None = None
+
+
+class BotOutputProgressMessageData(BaseModel):
+    """Data for bot output progress RTVI messages.
+
+    Parameters:
+        segment_id: ID of the AggregatedTextFrame being spoken. Matches the
+            segment_id on the corresponding bot-output message.
+        accumulated_text: Text already spoken in this segment, including the current word.
+        remaining_text: Text not yet spoken in this segment.
+    """
+
+    segment_id: int
+    accumulated_text: str
+    remaining_text: str
+
+
+class BotOutputProgressMessage(BaseModel):
+    """Message carrying word-level TTS progress within a spoken segment.
+
+    Emitted alongside each word-timestamp event. Clients can use segment_id
+    to correlate with the parent bot-output message and implement word-level
+    highlighting or karaoke-style display.
+    """
+
+    label: MessageLiteral = MESSAGE_LABEL
+    type: Literal["bot-output-progress"] = "bot-output-progress"
+    data: BotOutputProgressMessageData
 
 
 class BotOutputMessage(BaseModel):

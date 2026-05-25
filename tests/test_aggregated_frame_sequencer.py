@@ -742,10 +742,12 @@ class TestTTSProgressTextFrame(unittest.TestCase):
         progress = [f for f in result if isinstance(f, TTSProgressTextFrame)]
         self.assertEqual(len(progress), 1)
         p = progress[0]
+        self.assertEqual(p.text, "hello")
+        self.assertEqual(p.aggregated_by, AggregationType.SENTENCE)
         self.assertEqual(p.accumulated_text, "hello")
         self.assertEqual(p.remaining_text, "")
         self.assertEqual(p.context_id, "ctx1")
-        self.assertEqual(p.source_frame_id, source.id)
+        self.assertEqual(p.segment_id, source.id)
         self.assertEqual(p.pts, 100)
 
     def test_progress_accumulated_and_remaining_mid_slot(self):
@@ -774,7 +776,7 @@ class TestTTSProgressTextFrame(unittest.TestCase):
         progress = [f for f in result if isinstance(f, TTSProgressTextFrame)]
         self.assertEqual(len(progress), 1)
         self.assertEqual(progress[0].context_id, "ctx1")
-        self.assertEqual(progress[0].source_frame_id, frame1.id)
+        self.assertEqual(progress[0].segment_id, frame1.id)
 
 
 if __name__ == "__main__":

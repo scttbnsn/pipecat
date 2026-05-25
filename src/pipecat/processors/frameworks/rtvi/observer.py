@@ -519,10 +519,19 @@ class RTVIObserver(BaseObserver):
         """Handle TTS progress frames."""
         logger.debug(
             f"{self} TTS progress: context_id={frame.context_id} "
-            f"source_frame_id={frame.source_frame_id} "
+            f"source_segment_id={frame.segment_id} "
             f"accumulated={repr(frame.accumulated_text)} "
             f"remaining={repr(frame.remaining_text)}"
         )
+        if self._params.bot_output_enabled:
+            message = RTVI.BotOutputProgressMessage(
+                data=RTVI.BotOutputProgressMessageData(
+                    segment_id=frame.segment_id,
+                    accumulated_text=frame.accumulated_text,
+                    remaining_text=frame.remaining_text,
+                )
+            )
+            await self.send_rtvi_message(message)
 
     async def _send_aggregated_llm_text(self, frame: AggregatedTextFrame):
         """Send aggregated LLM text messages."""
@@ -539,15 +548,17 @@ class RTVIObserver(BaseObserver):
             if aggregation_type == agg_type or aggregation_type == "*":
                 text = await transform(text, agg_type)
 
-        # TODO: Look here. Think on how to handle this.
-
         isTTS = isinstance(frame, TTSTextFrame)
         if agg_type is not AggregationType.WORD:
-            logger.debug(f"{self} Aggregated LLM text: {text}, {agg_type} spoken:{isTTS}, id: {frame.id}")
+            logger.debug(
+                f"{self} Aggregated LLM text: {text}, {agg_type} spoken:{isTTS}, id: {frame.id}"
+            )
 
         if self._params.bot_output_enabled:
             message = RTVI.BotOutputMessage(
-                data=RTVI.BotOutputMessageData(text=text, spoken=isTTS, aggregated_by=agg_type)
+                data=RTVI.BotOutputMessageData(
+                    text=text, spoken=isTTS, aggregated_by=agg_type, segment_id=frame.id
+                )
             )
             await self.send_rtvi_message(message)
 
