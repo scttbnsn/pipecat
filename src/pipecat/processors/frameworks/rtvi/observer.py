@@ -517,7 +517,7 @@ class RTVIObserver(BaseObserver):
 
     async def _handle_tts_progress(self, frame: TTSProgressTextFrame):
         """Handle TTS progress frames."""
-        logger.debug(
+        logger.trace(
             f"{self} TTS progress: context_id={frame.context_id} "
             f"source_segment_id={frame.segment_id} "
             f"accumulated={repr(frame.accumulated_text)} "
