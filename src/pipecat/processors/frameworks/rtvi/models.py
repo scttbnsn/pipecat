@@ -345,6 +345,22 @@ class TextMessageData(BaseModel):
     text: str
 
 
+class BotOutputTransformResult(BaseModel):
+    """Return type for bot output transform functions.
+
+    Parameters:
+        text: The transformed full text of the segment.
+        accumulated_text: Transformed spoken-so-far portion. Only populated
+            when the transform is called from a progress context.
+        remaining_text: Transformed not-yet-spoken portion. Only populated
+            when the transform is called from a progress context.
+    """
+
+    text: str
+    accumulated_text: str | None = None
+    remaining_text: str | None = None
+
+
 class BotOutputMessageData(TextMessageData):
     """Data for bot output RTVI messages.
 
