@@ -1090,7 +1090,7 @@ class TTSService(AIService):
             src_frame,
             context_id,
             tracker=WordCompletionTracker(
-                prepared_text, llm_text=src_frame.raw_text or src_frame.text
+                text, llm_text=src_frame.raw_text or src_frame.text
             )
             if not self._push_text_frames
             else None,
