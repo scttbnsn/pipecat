@@ -1089,9 +1089,7 @@ class TTSService(AIService):
         self._aggregated_frame_sequencer.register_spoken(
             src_frame,
             context_id,
-            tracker=WordCompletionTracker(
-                text, llm_text=src_frame.raw_text or src_frame.text
-            )
+            tracker=WordCompletionTracker(text, llm_text=src_frame.raw_text or src_frame.text)
             if not self._push_text_frames
             else None,
             append_to_context=self._tts_contexts[context_id].append_to_context,
